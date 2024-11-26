@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:enviaya/presentation/screen/loginScreen.dart';
+import 'package:enviaya/presentation/screen/homeScreen.dart';
 
 // Función principal que inicia la aplicación
 void main() {
@@ -25,7 +25,7 @@ class _EstadoMiAplicacion extends State<MiAplicacion> {
         useMaterial3: true,
         colorSchemeSeed: Colors.green,
       ),
-      home: LoginScreen(),
+      home: WelcomeScreen(),
     );
   }
 }
