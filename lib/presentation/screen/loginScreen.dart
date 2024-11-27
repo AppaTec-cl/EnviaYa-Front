@@ -1,15 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _LoginScreenState createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
+
+  // Controladores para capturar el correo y la contraseña
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  // Instancia de FirebaseAuth
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Método para iniciar sesión con Firebase
+  Future<void> _signInWithEmailAndPassword() async {
+    try {
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Si el inicio de sesión es exitoso, navega a la pantalla del mapa (ejemplo)
+      Navigator.pushReplacementNamed(context, '/home'); // Cambia '/home' por la ruta deseada
+    } catch (e) {
+      // Muestra un mensaje de error si el inicio de sesión falla
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Error"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
                 TextField(
+                  controller: _emailController,
                   decoration: InputDecoration(
                     labelText: "Correo electrónico",
                     labelStyle: const TextStyle(fontSize: 16),
@@ -48,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 TextField(
+                  controller: _passwordController,
                   obscureText: !_isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: "Contraseña",
@@ -63,8 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          _isPasswordVisible =
-                              !_isPasswordVisible; // Esta wea es para que se vea o no lo pass xd
+                          _isPasswordVisible = !_isPasswordVisible;
                         });
                       },
                     ),
@@ -75,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // Lo puse mas que nada pq se ve bonito xd, pero si puedes ponerle eso mejor
+                      // Aquí puedes implementar la lógica para "Olvidaste tu contraseña"
                     },
                     child: const Text(
                       "¿Olvidaste tu contraseña?",
@@ -87,16 +123,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Esto deberia verificar si el usuario es correcto o no, si es correcto ya deberia llevar
-                      // a la wea de mapa, y si esta mal dejame vacio para poner la logica
-                    },
+                    onPressed: _signInWithEmailAndPassword,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.0),
                       ),
-                      backgroundColor: Colors.black, // Color del boton xd
+                      backgroundColor: Colors.black,
                     ),
                     child: const Text(
                       "Iniciar sesión",
@@ -117,7 +150,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        // Aca deberia abrirse la pantalla de registrarse
+                        // Aquí puedes redirigir a la pantalla de registro
+                        Navigator.pushNamed(context, '/register'); // Cambia '/register' por la ruta deseada
                       },
                       child: const Text(
                         "Regístrate ahora",
