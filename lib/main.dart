@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:enviaya/presentation/screen/homeScreen.dart';
+import 'package:firebase_core/firebase_core.dart'; // Importar Firebase
+import 'firebase_options.dart'; // Importar las opciones generadas
+import 'package:enviaya/presentation/screen/homeScreen.dart'; // Tu pantalla inicial
 
 // Función principal que inicia la aplicación
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Necesario para inicializar Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, // Inicializa Firebase
+  );
   runApp(const MiAplicacion());
 }
 
@@ -25,7 +31,7 @@ class _EstadoMiAplicacion extends State<MiAplicacion> {
         useMaterial3: true,
         colorSchemeSeed: Colors.green,
       ),
-      home: WelcomeScreen(),
+      home: WelcomeScreen(), // Pantalla inicial
     );
   }
 }
