@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:enviaya/presentation/screen/registerClientScreen.dart';
 
 class ClienteLoginScreen extends StatefulWidget {
   const ClienteLoginScreen({super.key});
@@ -157,10 +158,14 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
                       style: TextStyle(fontSize: 14),
                     ),
                     TextButton(
-                      onPressed: () {
-                        // Aquí puedes redirigir a la pantalla de registro de clientes
-                        Navigator.pushNamed(context, '/cliente-register');
-                      },
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterClientScreen(), // Asegúrate de que RegisterClientScreen esté correctamente importado
+                        ),
+                      );
+                    },
                       child: const Text(
                         "Regístrate ahora",
                         style: TextStyle(
