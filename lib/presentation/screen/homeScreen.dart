@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:enviaya/presentation/screen/loginScreen.dart';
+import 'package:enviaya/presentation/screen/ClientLoginScreen.dart';
+
+
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -18,7 +21,7 @@ class WelcomeScreen extends StatelessWidget {
               decoration: const BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage(
-                      'assets/img/homeImage.jpg'), // No cuentra la iamgen ARREGLAR
+                      'assets/img/homeImage.jpg'), // No cuentra la iamgen ARREGLADO
                   fit: BoxFit.cover,
                 ),
               ),
@@ -60,7 +63,12 @@ class WelcomeScreen extends StatelessWidget {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
-                            // Acción para "Soy Cliente"
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ClienteLoginScreen(),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16.0),

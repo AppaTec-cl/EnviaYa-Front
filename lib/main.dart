@@ -36,6 +36,7 @@ class _EstadoMiAplicacion extends State<MiAplicacion> {
       routes: {
       '/register': (context) => const RegisterScreen(),
       },
+      
     );
   }
 }
