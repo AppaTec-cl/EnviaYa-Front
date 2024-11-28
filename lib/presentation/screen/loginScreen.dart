@@ -26,24 +26,36 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // Si el inicio de sesión es exitoso, navega a la pantalla del mapa (ejemplo)
-      Navigator.pushReplacementNamed(context, '/home'); // Cambia '/home' por la ruta deseada
+      // Si el inicio de sesión es exitoso, muestra un mensaje
+      _showMessage("Inicio de sesión exitoso: ${userCredential.user?.email}");
     } catch (e) {
       // Muestra un mensaje de error si el inicio de sesión falla
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("Error"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
+      _showMessage("Error: ${e.toString()}");
     }
+  }
+
+  // Método para enviar correo de recuperación de contraseña
+  Future<void> _resetPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      _showMessage("Por favor, ingresa tu correo electrónico.");
+      return;
+    }
+    try {
+      await _auth.sendPasswordResetEmail(email: _emailController.text.trim());
+      _showMessage("Correo de recuperación enviado. Revisa tu bandeja de entrada.");
+    } catch (e) {
+      _showMessage("Error al enviar el correo: ${e.toString()}");
+    }
+  }
+
+  // Método para mostrar mensajes
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -110,9 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // Aquí puedes implementar la lógica para "Olvidaste tu contraseña"
-                    },
+                    onPressed: _resetPassword, // Agregamos el método aquí
                     child: const Text(
                       "¿Olvidaste tu contraseña?",
                       style: TextStyle(fontSize: 14),
@@ -150,8 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        // Aquí puedes redirigir a la pantalla de registro
-                        Navigator.pushNamed(context, '/register'); // Cambia '/register' por la ruta deseada
+                        Navigator.pushNamed(context, '/register');
                       },
                       child: const Text(
                         "Regístrate ahora",

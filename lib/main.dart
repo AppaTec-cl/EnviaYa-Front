@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Importar Firebase
 import 'firebase_options.dart'; // Importar las opciones generadas
 import 'package:enviaya/presentation/screen/homeScreen.dart'; // Tu pantalla inicial
+import 'package:enviaya/presentation/screen/registerScreen.dart';
 
 // Función principal que inicia la aplicación
 void main() async {
@@ -32,6 +33,9 @@ class _EstadoMiAplicacion extends State<MiAplicacion> {
         colorSchemeSeed: Colors.green,
       ),
       home: WelcomeScreen(), // Pantalla inicial
+      routes: {
+      '/register': (context) => const RegisterScreen(),
+      },
     );
   }
 }
