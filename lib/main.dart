@@ -6,7 +6,8 @@ import 'package:enviaya/presentation/screen/registerScreen.dart';
 
 // Función principal que inicia la aplicación
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Necesario para inicializar Firebase
+  WidgetsFlutterBinding
+      .ensureInitialized(); // Necesario para inicializar Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform, // Inicializa Firebase
   );
@@ -34,9 +35,8 @@ class _EstadoMiAplicacion extends State<MiAplicacion> {
       ),
       home: WelcomeScreen(), // Pantalla inicial
       routes: {
-      '/register': (context) => const RegisterScreen(),
+        '/register': (context) => const RegisterScreen(),
       },
-      
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:enviaya/presentation/screen/homeEmployee.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,13 +22,14 @@ class _LoginScreenState extends State<LoginScreen> {
   // Método para iniciar sesión con Firebase
   Future<void> _signInWithEmailAndPassword() async {
     try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Si el inicio de sesión es exitoso, muestra un mensaje
-      _showMessage("Inicio de sesión exitoso: ${userCredential.user?.email}");
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => WorkerWelcomeScreen()));
     } catch (e) {
       // Muestra un mensaje de error si el inicio de sesión falla
       _showMessage("Error: ${e.toString()}");
@@ -42,7 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     try {
       await _auth.sendPasswordResetEmail(email: _emailController.text.trim());
-      _showMessage("Correo de recuperación enviado. Revisa tu bandeja de entrada.");
+      _showMessage(
+          "Correo de recuperación enviado. Revisa tu bandeja de entrada.");
     } catch (e) {
       _showMessage("Error al enviar el correo: ${e.toString()}");
     }

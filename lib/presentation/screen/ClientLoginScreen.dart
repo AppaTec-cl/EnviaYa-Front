@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:enviaya/presentation/screen/registerClientScreen.dart';
+import 'package:enviaya/presentation/screen/homeUser.dart';
 
 class ClienteLoginScreen extends StatefulWidget {
   const ClienteLoginScreen({super.key});
@@ -22,24 +23,19 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
   // Método para iniciar sesión con Firebase
   Future<void> _signInWithEmailAndPassword() async {
     try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       // Si el inicio de sesión es exitoso
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('¡Bienvenido, Cliente ${userCredential.user?.email}!'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
-      // Aquí puedes redirigir a la pantalla principal del cliente
-      Navigator.pushReplacementNamed(context, '/cliente-home');
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => OrderSearchScreen()));
     } catch (e) {
       // Mostrar mensaje de error
-      _showMessage("Error: ${e.toString()}");
+      _showMessage(
+          "Error: El correo electronico o la contraseña es incorrecto");
     }
   }
 
@@ -119,7 +115,8 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
                   child: TextButton(
                     onPressed: () {
                       // Recuperar contraseña
-                      _auth.sendPasswordResetEmail(email: _emailController.text.trim());
+                      _auth.sendPasswordResetEmail(
+                          email: _emailController.text.trim());
                       _showMessage("Correo de recuperación enviado.");
                     },
                     child: const Text(
@@ -158,14 +155,15 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
                       style: TextStyle(fontSize: 14),
                     ),
                     TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RegisterClientScreen(), // Asegúrate de que RegisterClientScreen esté correctamente importado
-                        ),
-                      );
-                    },
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const RegisterClientScreen(), // Asegúrate de que RegisterClientScreen esté correctamente importado
+                          ),
+                        );
+                      },
                       child: const Text(
                         "Regístrate ahora",
                         style: TextStyle(
