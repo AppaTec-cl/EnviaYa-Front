@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class ReportProblemScreen extends StatefulWidget {
   const ReportProblemScreen({super.key});
@@ -15,7 +14,8 @@ class ReportProblemScreen extends StatefulWidget {
 }
 
 class _ReportProblemScreenState extends State<ReportProblemScreen> {
-  final TextEditingController _trackingNumberController = TextEditingController();
+  final TextEditingController _trackingNumberController =
+      TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
   String? _selectedProblem;
   LocationData? _currentLocation;
@@ -73,28 +73,17 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     }
   }
 
-  // Comprimir imagen
-  Future<File> _compressImage(File file) async {
-    final compressedFile = await FlutterImageCompress.compressAndGetFile(
-      file.absolute.path,
-      '${file.absolute.path}_compressed.jpg',
-      quality: 70, // Ajusta la calidad según lo necesario
-    );
-
-    return compressedFile ?? file; // Devuelve el archivo original si no se puede comprimir
-  }
-
   // Codificar imagen a Base64
-  Future<String?> _encodeImageToBase64(File? image) async {
+  String? _encodeImageToBase64(File? image) {
     if (image == null) return null;
-    final compressedImage = await _compressImage(image);
-    final bytes = await compressedImage.readAsBytes();
+    final bytes = image.readAsBytesSync();
     return base64Encode(bytes);
   }
 
   // Enviar el reporte a Firestore
   Future<void> _submitReport() async {
-    if (_trackingNumberController.text.trim().isEmpty || _selectedProblem == null) {
+    if (_trackingNumberController.text.trim().isEmpty ||
+        _selectedProblem == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Por favor, completa todos los campos obligatorios."),
@@ -103,16 +92,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       return;
     }
 
-    final String? imageBase64 = await _encodeImageToBase64(_selectedImage);
-
-    if (imageBase64 != null && imageBase64.length > 1048487) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("La imagen es demasiado grande incluso después de la compresión."),
-        ),
-      );
-      return;
-    }
+    final String? imageBase64 = _encodeImageToBase64(_selectedImage);
 
     await _firestore.collection('problem_reports').add({
       'tracking_number': _trackingNumberController.text.trim(),
@@ -152,6 +132,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Reportar Problema"),
+
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -159,6 +140,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Mostrar mapa si la ubicación está disponible
               if (_currentLatLng != null)
                 SizedBox(
                   height: 300,
@@ -181,7 +163,10 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 )
               else
                 const Center(child: CircularProgressIndicator()),
+
               const SizedBox(height: 20),
+
+              // Número de seguimiento o RUT
               TextField(
                 controller: _trackingNumberController,
                 decoration: InputDecoration(
@@ -192,6 +177,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Selección del problema
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
                   labelText: "Selecciona el problema",
@@ -213,6 +200,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 },
               ),
               const SizedBox(height: 20),
+
+              // Comentarios adicionales
               TextField(
                 controller: _commentsController,
                 maxLines: 4,
@@ -224,6 +213,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Selección de foto
               Wrap(
                 children: [
                   ElevatedButton.icon(
@@ -246,7 +237,10 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                   height: 150,
                   fit: BoxFit.cover,
                 ),
+
               const SizedBox(height: 20),
+
+              // Botón para enviar el reporte
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -256,6 +250,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
+                    backgroundColor: Colors.black,
                   ),
                   child: const Text(
                     "Enviar Reporte",
