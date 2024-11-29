@@ -37,7 +37,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       // Crear el usuario en Firebase Authentication
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -130,6 +131,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: _rutController,
+                  onChanged: (value) {
+                    // Formatear automáticamente el RUT mientras se escribe
+                    RUTValidator.formatFromTextController(_rutController);
+                  },
                   decoration: InputDecoration(
                     labelText: "RUT (con puntos y guión)",
                     labelStyle: const TextStyle(fontSize: 16),
@@ -192,7 +197,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); // Volver a la pantalla de inicio de sesión
+                        Navigator.pop(
+                            context); // Volver a la pantalla de inicio de sesión
                       },
                       child: const Text(
                         "Inicia sesión",

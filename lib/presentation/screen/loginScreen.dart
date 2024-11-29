@@ -19,6 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   // Instancia de FirebaseAuth
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Código de administrador
+  final String adminCode =
+      "1234admin"; // Cambia esto por el código que prefieras
+
   // Método para iniciar sesión con Firebase
   Future<void> _signInWithEmailAndPassword() async {
     try {
@@ -28,10 +32,11 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
 
-      Navigator.push(context,
-          MaterialPageRoute(builder: (context) => WorkerWelcomeScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => WorkerWelcomeScreen()),
+      );
     } catch (e) {
-      // Muestra un mensaje de error si el inicio de sesión falla
       _showMessage("Error: ${e.toString()}");
     }
   }
@@ -57,6 +62,56 @@ class _LoginScreenState extends State<LoginScreen> {
       SnackBar(
         content: Text(message),
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // Método para mostrar el modal de acceso con código de administrador
+  void _showAdminCodeDialog() {
+    final TextEditingController codeController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Acceso restringido"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Ingresa el código de administrador para continuar.",
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: codeController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: "Código de administrador",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Cerrar el modal
+            },
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (codeController.text.trim() == adminCode) {
+                Navigator.pop(context); // Cerrar el modal
+                Navigator.pushNamed(
+                    context, '/register'); // Navegar al registro
+              } else {
+                _showMessage("Código incorrecto. Intenta nuevamente.");
+              }
+            },
+            child: const Text("Confirmar"),
+          ),
+        ],
       ),
     );
   }
@@ -125,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: _resetPassword, // Agregamos el método aquí
+                    onPressed: _resetPassword,
                     child: const Text(
                       "¿Olvidaste tu contraseña?",
                       style: TextStyle(fontSize: 14),
@@ -162,9 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(fontSize: 14),
                     ),
                     TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/register');
-                      },
+                      onPressed: _showAdminCodeDialog, // Llamar al modal
                       child: const Text(
                         "Regístrate ahora",
                         style: TextStyle(

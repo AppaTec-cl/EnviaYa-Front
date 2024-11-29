@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart_rut_validator.dart';
 
 class RegisterClientScreen extends StatefulWidget {
   const RegisterClientScreen({super.key});
@@ -18,6 +19,8 @@ class _RegisterClientScreenState extends State<RegisterClientScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _postalCodeController = TextEditingController();
+  final TextEditingController _rutController =
+      TextEditingController(); // Controlador para el RUT
 
   // Instancia de FirebaseAuth y Firestore
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -25,9 +28,24 @@ class _RegisterClientScreenState extends State<RegisterClientScreen> {
 
   // Método para registrar al cliente
   Future<void> _registerClient() async {
+    // Validar el RUT antes de continuar
+    final RUTValidator rutValidator = RUTValidator();
+    final String? validationError = rutValidator.validator(_rutController.text);
+
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validationError),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return; // Detener el registro si el RUT no es válido
+    }
+
     try {
       // Crear usuario en Firebase Authentication
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -35,6 +53,7 @@ class _RegisterClientScreenState extends State<RegisterClientScreen> {
       // Guardar datos adicionales en Firestore
       await _firestore.collection('clients').doc(userCredential.user?.uid).set({
         'name': _nameController.text.trim(),
+        'rut': _rutController.text.trim(),
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'address': _addressController.text.trim(),
@@ -93,6 +112,20 @@ class _RegisterClientScreenState extends State<RegisterClientScreen> {
                   controller: _nameController,
                   decoration: InputDecoration(
                     labelText: "Nombre completo",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _rutController,
+                  onChanged: (value) {
+                    // Formatear automáticamente el RUT mientras se escribe
+                    RUTValidator.formatFromTextController(_rutController);
+                  },
+                  decoration: InputDecoration(
+                    labelText: "RUT (con puntos y guión)",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),

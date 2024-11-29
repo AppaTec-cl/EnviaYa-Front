@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:enviaya/presentation/screen/mapRute.dart';
 
 class WorkerWelcomeScreen extends StatelessWidget {
+  const WorkerWelcomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,7 +41,12 @@ class WorkerWelcomeScreen extends StatelessWidget {
                       icon: Icons.map,
                       label: "Mapa de Pedidos",
                       onTap: () {
-                        // Acción para Mapa de Pedidos
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MapSample(),
+                          ),
+                        );
                       },
                     ),
                     _buildOptionCard(
