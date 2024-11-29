@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportProblemScreen extends StatefulWidget {
   const ReportProblemScreen({super.key});
@@ -15,6 +19,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   final TextEditingController _commentsController = TextEditingController();
   String? _selectedProblem;
   LocationData? _currentLocation;
+  File? _selectedImage;
+  LatLng? _currentLatLng;
 
   final List<String> _problems = [
     "Paquete dañado",
@@ -28,7 +34,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   ];
 
   late GoogleMapController _mapController;
-  LatLng? _currentLatLng;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Obtener la ubicación actual
   Future<void> _getCurrentLocation() async {
@@ -55,9 +61,29 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     });
   }
 
-  // Enviar el reporte
-  void _submitReport() {
-    if (_trackingNumberController.text.trim().isEmpty || _selectedProblem == null) {
+  // Capturar o seleccionar una foto
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source);
+
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  // Codificar imagen a Base64
+  String? _encodeImageToBase64(File? image) {
+    if (image == null) return null;
+    final bytes = image.readAsBytesSync();
+    return base64Encode(bytes);
+  }
+
+  // Enviar el reporte a Firestore
+  Future<void> _submitReport() async {
+    if (_trackingNumberController.text.trim().isEmpty ||
+        _selectedProblem == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Por favor, completa todos los campos obligatorios."),
@@ -66,11 +92,19 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       return;
     }
 
-    // Aquí se enviará el reporte al servidor o a Firebase
-    print("Número de seguimiento: ${_trackingNumberController.text}");
-    print("Problema: $_selectedProblem");
-    print("Comentarios: ${_commentsController.text}");
-    print("Ubicación: ${_currentLocation?.latitude}, ${_currentLocation?.longitude}");
+    final String? imageBase64 = _encodeImageToBase64(_selectedImage);
+
+    await _firestore.collection('problem_reports').add({
+      'tracking_number': _trackingNumberController.text.trim(),
+      'problem': _selectedProblem,
+      'comments': _commentsController.text.trim(),
+      'location': {
+        'latitude': _currentLocation?.latitude,
+        'longitude': _currentLocation?.longitude,
+      },
+      'image_base64': imageBase64, // Imagen codificada en Base64
+      'timestamp': FieldValue.serverTimestamp(),
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -83,6 +117,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     _commentsController.clear();
     setState(() {
       _selectedProblem = null;
+      _selectedImage = null;
     });
   }
 
@@ -177,6 +212,32 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Selección de foto
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text("Tomar Foto"),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo),
+                    label: const Text("Seleccionar de Galería"),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_selectedImage != null)
+                Image.file(
+                  _selectedImage!,
+                  height: 150,
+                  fit: BoxFit.cover,
+                ),
+
               const SizedBox(height: 20),
 
               // Botón para enviar el reporte
