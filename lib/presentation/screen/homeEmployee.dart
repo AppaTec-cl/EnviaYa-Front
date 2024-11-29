@@ -28,7 +28,7 @@ class WorkerWelcomeScreen extends StatelessWidget {
                 "Estamos listos para comenzar. Usa las opciones a continuación para gestionar tus tareas.",
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey,
+                  color: Color.fromRGBO(158, 158, 158, 1),
                 ),
               ),
               const SizedBox(height: 40),

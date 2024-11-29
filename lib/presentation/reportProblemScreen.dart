@@ -132,7 +132,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Reportar Problema"),
-        backgroundColor: Colors.black,
+
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
