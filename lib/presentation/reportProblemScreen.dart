@@ -215,7 +215,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
               const SizedBox(height: 20),
 
               // Selección de foto
-              Row(
+              Wrap(
                 children: [
                   ElevatedButton.icon(
                     onPressed: () => _pickImage(ImageSource.camera),
