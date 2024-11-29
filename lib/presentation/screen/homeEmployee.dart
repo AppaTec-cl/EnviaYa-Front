@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:enviaya/presentation/screen/mapRute.dart';
+import 'package:enviaya/presentation/reportProblemScreen.dart';
 
 class WorkerWelcomeScreen extends StatelessWidget {
   const WorkerWelcomeScreen({super.key});
@@ -67,7 +68,13 @@ class WorkerWelcomeScreen extends StatelessWidget {
                       icon: Icons.report_problem,
                       label: "Reportar Problema",
                       onTap: () {
-                        // Acción para Reportar Problema
+                          Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ReportProblemScreen(),
+                          ),
+                        );
+                            // Acción para Reportar Problema
                       },
                     ),
                   ],
