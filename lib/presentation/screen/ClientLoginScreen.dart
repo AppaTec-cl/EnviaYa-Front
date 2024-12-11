@@ -159,8 +159,7 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const RegisterClientScreen(), // Asegúrate de que RegisterClientScreen esté correctamente importado
+                            builder: (context) => const RegisterClientScreen(),
                           ),
                         );
                       },
