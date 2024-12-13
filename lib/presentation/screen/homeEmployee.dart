@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:enviaya/presentation/screen/mapRute.dart';
 import 'package:enviaya/presentation/reportProblemScreen.dart';
+import 'package:enviaya/presentation/screen/confirmDeliveryScreen.dart';
+import 'package:enviaya/presentation/screen/deliveryHistoryScreen.dart';
 
 class WorkerWelcomeScreen extends StatelessWidget {
   const WorkerWelcomeScreen({super.key});
@@ -54,27 +56,36 @@ class WorkerWelcomeScreen extends StatelessWidget {
                       icon: Icons.check_circle,
                       label: "Confirmar Entrega",
                       onTap: () {
-                        // Acción para Confirmar Entrega
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ConfirmDeliveryScreen(),
+                          ),
+                        );
                       },
                     ),
                     _buildOptionCard(
                       icon: Icons.history,
                       label: "Historial de Entregas",
                       onTap: () {
-                        // Acción para Historial de Entregas
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DeliveryHistoryScreen(),
+                          ),
+                        );
                       },
                     ),
                     _buildOptionCard(
                       icon: Icons.report_problem,
                       label: "Reportar Problema",
                       onTap: () {
-                          Navigator.push(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const ReportProblemScreen(),
                           ),
                         );
-                            // Acción para Reportar Problema
                       },
                     ),
                   ],
@@ -102,7 +113,7 @@ class WorkerWelcomeScreen extends StatelessWidget {
             BoxShadow(
               color: Colors.grey.withOpacity(0.3),
               blurRadius: 8.0,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),

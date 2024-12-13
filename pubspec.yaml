@@ -42,7 +42,7 @@ dependencies:
   dio: ^5.7.0
   flutter_google_maps_webservices: ^1.1.1
   mailer:
-
+  signature:
 
 
   # The following adds the Cupertino Icons font to your application.
