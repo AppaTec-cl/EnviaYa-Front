@@ -4,8 +4,8 @@ import 'package:mailer/smtp_server.dart';
 class EmailService {
   final String smtpHost = 'smtp.zoho.com';
   final int smtpPort = 465;
-  final String username = 'admin@appatec.cl'; // Reemplaza con tu correo
-  final String password = 'Boby1201*'; // Reemplaza con tu contraseña
+  final String username = 'admin@appatec.cl'; 
+  final String password = 'Boby1201*'; 
 
   Future<void> sendProblemReportEmail({
     required String recipientEmail,
