@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:enviaya/services/email_service2.dart';
 class ReportProblemScreen extends StatefulWidget {
   const ReportProblemScreen({super.key});
 
@@ -16,7 +16,9 @@ class ReportProblemScreen extends StatefulWidget {
 class _ReportProblemScreenState extends State<ReportProblemScreen> {
   final TextEditingController _trackingNumberController =
       TextEditingController();
+  final TextEditingController _rutController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
+
   String? _selectedProblem;
   LocationData? _currentLocation;
   File? _selectedImage;
@@ -35,6 +37,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
 
   late GoogleMapController _mapController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final EmailService _emailService = EmailService();
 
   // Obtener la ubicación actual
   Future<void> _getCurrentLocation() async {
@@ -61,6 +64,25 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     });
   }
 
+  // Validar si el número de seguimiento existe
+  Future<Map<String, dynamic>?> _validateTrackingNumber() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('orders')
+          .where('tracking_number', isEqualTo: _trackingNumberController.text.trim())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error al validar el número de seguimiento: $e');
+      return null;
+    }
+  }
+
   // Capturar o seleccionar una foto
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -83,42 +105,67 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   // Enviar el reporte a Firestore
   Future<void> _submitReport() async {
     if (_trackingNumberController.text.trim().isEmpty ||
+        _rutController.text.trim().isEmpty ||
         _selectedProblem == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Por favor, completa todos los campos obligatorios."),
-        ),
+        const SnackBar(content: Text("Por favor, completa todos los campos obligatorios.")),
       );
       return;
     }
 
-    final String? imageBase64 = _encodeImageToBase64(_selectedImage);
+    // Validar si el número de seguimiento existe
+    final orderData = await _validateTrackingNumber();
+    if (orderData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("El número de seguimiento no existe.")),
+      );
+      return;
+    }
 
-    await _firestore.collection('problem_reports').add({
-      'tracking_number': _trackingNumberController.text.trim(),
-      'problem': _selectedProblem,
-      'comments': _commentsController.text.trim(),
-      'location': {
-        'latitude': _currentLocation?.latitude,
-        'longitude': _currentLocation?.longitude,
-      },
-      'image_base64': imageBase64, // Imagen codificada en Base64
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    try {
+      // Guardar el reporte en Firestore
+      final String? imageBase64 = _encodeImageToBase64(_selectedImage);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Reporte enviado con éxito."),
-      ),
-    );
+      await _firestore.collection('problem_reports').add({
+        'tracking_number': _trackingNumberController.text.trim(),
+        'rut': _rutController.text.trim(),
+        'problem': _selectedProblem,
+        'comments': _commentsController.text.trim(),
+        'image_base64': imageBase64,
+        'location': _currentLatLng != null
+            ? {
+                'latitude': _currentLatLng!.latitude,
+                'longitude': _currentLatLng!.longitude,
+              }
+            : null,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
-    // Limpiar los campos después de enviar
-    _trackingNumberController.clear();
-    _commentsController.clear();
-    setState(() {
-      _selectedProblem = null;
-      _selectedImage = null;
-    });
+      // Enviar correo al cliente
+      await _emailService.sendProblemReportEmail(
+        recipientEmail: orderData['email'],
+        recipientName: '${orderData['name']} ${orderData['surname']}',
+        trackingNumber: _trackingNumberController.text.trim(),
+        problemDescription: _selectedProblem!,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Reporte enviado con éxito.")),
+      );
+
+      // Limpiar los campos después de enviar
+      _trackingNumberController.clear();
+      _rutController.clear();
+      _commentsController.clear();
+      setState(() {
+        _selectedProblem = null;
+        _selectedImage = null;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al enviar el reporte: $e")),
+      );
+    }
   }
 
   @override
@@ -132,7 +179,6 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Reportar Problema"),
-
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -166,11 +212,23 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
 
               const SizedBox(height: 20),
 
-              // Número de seguimiento o RUT
+              // Número de seguimiento
               TextField(
                 controller: _trackingNumberController,
                 decoration: InputDecoration(
-                  labelText: "Número de seguimiento o RUT del destinatario",
+                  labelText: "Número de seguimiento",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // RUT
+              TextField(
+                controller: _rutController,
+                decoration: InputDecoration(
+                  labelText: "RUT del destinatario",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
