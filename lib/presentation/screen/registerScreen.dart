@@ -19,6 +19,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _rutController = TextEditingController();
 
+  // Rol del usuario
+  String? _selectedRole;
+  final List<String> _roles = ["Repartidor", "Encargado de asignar paquetes"];
+
   // Instancias de FirebaseAuth y Firestore
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -32,6 +36,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final rutError = _rutValidator.validator(_rutController.text.trim());
     if (rutError != null) {
       _showMessage(rutError); // Mostrar el error de validación
+      return;
+    }
+
+    // Validar que el rol esté seleccionado
+    if (_selectedRole == null) {
+      _showMessage("Por favor, selecciona un rol.");
       return;
     }
 
@@ -50,6 +60,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'address': _addressController.text.trim(),
         'rut': _rutController.text.trim(),
         'email': _emailController.text.trim(),
+        'role': _selectedRole, // Guardar el rol seleccionado
       });
 
       // Mostrar mensaje de éxito
@@ -142,6 +153,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(12.0),
                     ),
                   ),
+                ),
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: "Selecciona un rol",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                  value: _selectedRole,
+                  items: _roles.map((role) {
+                    return DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedRole = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 20),
                 TextField(

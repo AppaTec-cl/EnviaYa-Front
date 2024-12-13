@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:enviaya/presentation/screen/homeEmployee.dart';
+import 'package:enviaya/presentation/screen/homeAssing.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,12 +18,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Instancia de FirebaseAuth
+  // Instancia de FirebaseAuth y Firestore
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // Código de administrador
-  final String adminCode =
-      "1234admin"; // Cambia esto por el código que prefieras
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Método para iniciar sesión con Firebase
   Future<void> _signInWithEmailAndPassword() async {
@@ -32,10 +31,34 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => WorkerWelcomeScreen()),
-      );
+      // Obtener datos del usuario desde Firestore
+      final DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(userCredential.user?.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+
+        // Verificar el rol del usuario
+        final String userRole = userData['role'] ?? '';
+
+        if (userRole == 'Repartidor') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const WorkerWelcomeScreen()),
+          );
+        } else if (userRole == 'Encargado de asignar paquetes') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeAssignScreen()),
+          );
+        } else {
+          _showMessage("Rol desconocido. Contacta al administrador.");
+        }
+      } else {
+        _showMessage("El usuario no tiene datos registrados. Contacta al administrador.");
+      }
     } catch (e) {
       _showMessage("Error: ${e.toString()}");
     }
@@ -62,56 +85,6 @@ class _LoginScreenState extends State<LoginScreen> {
       SnackBar(
         content: Text(message),
         duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  // Método para mostrar el modal de acceso con código de administrador
-  void _showAdminCodeDialog() {
-    final TextEditingController codeController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Acceso restringido"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Ingresa el código de administrador para continuar.",
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: codeController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Código de administrador",
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Cerrar el modal
-            },
-            child: const Text("Cancelar"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (codeController.text.trim() == adminCode) {
-                Navigator.pop(context); // Cerrar el modal
-                Navigator.pushNamed(
-                    context, '/register'); // Navegar al registro
-              } else {
-                _showMessage("Código incorrecto. Intenta nuevamente.");
-              }
-            },
-            child: const Text("Confirmar"),
-          ),
-        ],
       ),
     );
   }
@@ -207,26 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "¿No tienes una cuenta? ",
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    TextButton(
-                      onPressed: _showAdminCodeDialog, // Llamar al modal
-                      child: const Text(
-                        "Regístrate ahora",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
