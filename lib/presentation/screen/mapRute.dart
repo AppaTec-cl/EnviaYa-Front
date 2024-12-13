@@ -16,16 +16,15 @@ class MapSample extends StatefulWidget {
 
 class MapSampleState extends State<MapSample> {
   final Completer<GoogleMapController> _controller = Completer<GoogleMapController>();
-
   static const LatLng _initialPosition = LatLng(-22.447249647343373, -68.92844046673834);
-  LatLng _currentPosition = _initialPosition;
 
+  LatLng _currentPosition = _initialPosition;
   LocationData? _currentLocation;
   final String _apiKey = 'AIzaSyBUG45qeydoyjANTcG2Qnf0Ce6nOEXW6kw';
 
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-
+  List<String> _routeSteps = [];
   List<LatLng> _deliveryPoints = [];
   String? _workerId;
 
@@ -33,7 +32,7 @@ class MapSampleState extends State<MapSample> {
   void initState() {
     super.initState();
     _getCurrentLocation();
-    _fetchWorkerIdAndOrders(); // Obtener workerId y pedidos asignados
+    _fetchWorkerIdAndOrders();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -68,31 +67,20 @@ class MapSampleState extends State<MapSample> {
 
   Future<void> _fetchWorkerIdAndOrders() async {
     try {
-      // Obtener el ID del usuario autenticado
       final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("No se encontró un usuario autenticado.");
 
-      if (user == null) {
-        throw Exception("No se encontró un usuario autenticado.");
-      }
-
-      // Consultar el documento del usuario en Firestore
       final DocumentSnapshot workerSnapshot =
           await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-      if (!workerSnapshot.exists) {
-        throw Exception("No se encontró información del usuario en la base de datos.");
-      }
+      if (!workerSnapshot.exists) throw Exception("No se encontró información del usuario.");
 
       setState(() {
-        _workerId = workerSnapshot.id; // Asignar el workerId desde Firestore
+        _workerId = workerSnapshot.id;
       });
 
-      // Obtener los pedidos asignados al workerId
       await _fetchAssignedOrders();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al obtener workerId: $e")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -139,41 +127,48 @@ class MapSampleState extends State<MapSample> {
     return null;
   }
 
-  Future<void> _drawRoute() async {
-    if (_deliveryPoints.length < 2) return;
+Future<void> _drawRoute() async {
+  if (_deliveryPoints.length < 2) return;
 
-    String waypoints = _deliveryPoints
-        .sublist(1, _deliveryPoints.length - 1)
-        .map((point) => "${point.latitude},${point.longitude}")
-        .join('|');
+  String waypoints = _deliveryPoints
+      .sublist(1, _deliveryPoints.length - 1)
+      .map((point) => "${point.latitude},${point.longitude}")
+      .join('|');
 
-    final String url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=${_currentPosition.latitude},${_currentPosition.longitude}&destination=${_deliveryPoints.last.latitude},${_deliveryPoints.last.longitude}&waypoints=$waypoints&optimizeWaypoints=true&key=$_apiKey';
+  final String url =
+      'https://maps.googleapis.com/maps/api/directions/json?origin=${_currentPosition.latitude},${_currentPosition.longitude}&destination=${_deliveryPoints.last.latitude},${_deliveryPoints.last.longitude}&waypoints=$waypoints&optimizeWaypoints=true&language=es&key=$_apiKey';
 
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
-      if (json['routes'].isNotEmpty) {
-        final points = json['routes'][0]['overview_polyline']['points'];
-        final List<LatLng> polylinePoints = _decodePoly(points);
+  final response = await http.get(Uri.parse(url));
+  if (response.statusCode == 200) {
+    final json = jsonDecode(response.body);
+    if (json['routes'].isNotEmpty) {
+      final points = json['routes'][0]['overview_polyline']['points'];
+      final List<LatLng> polylinePoints = _decodePoly(points);
 
-        setState(() {
-          _polylines.add(Polyline(
-            polylineId: const PolylineId('route'),
-            points: polylinePoints,
-            color: Colors.blue,
-            width: 5,
-          ));
-        });
-
-        final GoogleMapController controller = await _controller.future;
-        controller.animateCamera(CameraUpdate.newLatLngBounds(
-          _boundsFromLatLngList([_currentPosition, ..._deliveryPoints]),
-          50,
+      setState(() {
+        _polylines.add(Polyline(
+          polylineId: const PolylineId('route'),
+          points: polylinePoints,
+          color: Colors.blue,
+          width: 5,
         ));
-      }
+
+        // Extraer los pasos de la ruta en español
+        _routeSteps = (json['routes'][0]['legs'][0]['steps'] as List)
+            .map((step) => step['html_instructions']
+                .toString()
+                .replaceAll(RegExp(r'<[^>]*>'), ''))
+            .toList();
+      });
+
+      final GoogleMapController controller = await _controller.future;
+      controller.animateCamera(CameraUpdate.newLatLngBounds(
+        _boundsFromLatLngList([_currentPosition, ..._deliveryPoints]),
+        50,
+      ));
     }
   }
+}
 
   List<LatLng> _decodePoly(String poly) {
     List<LatLng> polyline = [];
@@ -224,6 +219,26 @@ class MapSampleState extends State<MapSample> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rutas Asignadas'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.navigation),
+            onPressed: () {
+              if (_routeSteps.isNotEmpty) {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (_) {
+                    return ListView.builder(
+                      itemCount: _routeSteps.length,
+                      itemBuilder: (_, index) => ListTile(
+                        title: Text("Paso ${index + 1}: ${_routeSteps[index]}"),
+                      ),
+                    );
+                  },
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: GoogleMap(
         mapType: MapType.normal,
