@@ -35,47 +35,45 @@ class MapSampleState extends State<MapSample> {
     _fetchWorkerIdAndOrders();
   }
 
-Future<void> _getCurrentLocation() async {
-  Location location = Location();
-  bool _serviceEnabled = await location.serviceEnabled();
-  if (!_serviceEnabled) {
-    _serviceEnabled = await location.requestService();
-    if (!_serviceEnabled) return;
+  Future<void> _getCurrentLocation() async {
+    Location location = Location();
+    bool _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) return;
+    }
+
+    PermissionStatus _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) return;
+    }
+
+    _currentLocation = await location.getLocation();
+    _updateMarkerAndRoute(_currentLocation!);
+
+    location.onLocationChanged.listen((LocationData newLocation) {
+      _updateMarkerAndRoute(newLocation);
+    });
   }
 
-  PermissionStatus _permissionGranted = await location.hasPermission();
-  if (_permissionGranted == PermissionStatus.denied) {
-    _permissionGranted = await location.requestPermission();
-    if (_permissionGranted != PermissionStatus.granted) return;
+  void _updateMarkerAndRoute(LocationData locationData) async {
+    setState(() {
+      _currentPosition = LatLng(locationData.latitude!, locationData.longitude!);
+      _markers.removeWhere((marker) => marker.markerId == const MarkerId('currentLocation'));
+      _markers.add(Marker(
+        markerId: const MarkerId('currentLocation'),
+        position: _currentPosition,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: const InfoWindow(title: 'Mi ubicación actual'),
+      ));
+    });
+
+    await _drawRoute();
+
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(CameraUpdate.newLatLng(_currentPosition));
   }
-
-  // Obtén la ubicación actual
-  _currentLocation = await location.getLocation();
-  _updateMarker(_currentLocation!);
-
-  // Escucha la ubicación en tiempo real
-  location.onLocationChanged.listen((LocationData newLocation) {
-    _updateMarker(newLocation);
-  });
-}
-
-void _updateMarker(LocationData locationData) async {
-  setState(() {
-    _currentPosition = LatLng(locationData.latitude!, locationData.longitude!);
-    _markers.removeWhere((marker) => marker.markerId == const MarkerId('currentLocation'));
-    _markers.add(Marker(
-      markerId: const MarkerId('currentLocation'),
-      position: _currentPosition,
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Color personalizado
-      infoWindow: const InfoWindow(title: 'Mi ubicación actual'),
-    ));
-  });
-
-  final GoogleMapController controller = await _controller.future;
-  controller.animateCamera(CameraUpdate.newLatLng(_currentPosition));
-}
-
-
 
   Future<void> _fetchWorkerIdAndOrders() async {
     try {
@@ -99,13 +97,12 @@ void _updateMarker(LocationData locationData) async {
   Future<void> _fetchAssignedOrders() async {
     if (_workerId == null) return;
 
-final QuerySnapshot snapshot = await FirebaseFirestore.instance
-    .collection('orders')
-    .where('workerId', isEqualTo: _workerId)
-    .where('assigned', isEqualTo: true)
-    .where('status', isEqualTo: 'Pendiente') // Solo pedidos pendientes
-    .get();
-
+    final QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('orders')
+        .where('workerId', isEqualTo: _workerId)
+        .where('assigned', isEqualTo: true)
+        .where('status', isEqualTo: 'Pendiente')
+        .get();
 
     for (var doc in snapshot.docs) {
       String address = "${doc['address']}, ${doc['city']}";
@@ -144,48 +141,41 @@ final QuerySnapshot snapshot = await FirebaseFirestore.instance
     return null;
   }
 
-Future<void> _drawRoute() async {
-  if (_deliveryPoints.length < 2) return;
+  Future<void> _drawRoute() async {
+    if (_deliveryPoints.isEmpty) return;
 
-  String waypoints = _deliveryPoints
-      .map((point) => "${point.latitude},${point.longitude}")
-      .join('|');
+    String waypoints = _deliveryPoints
+        .map((point) => "${point.latitude},${point.longitude}")
+        .join('|');
 
+    final String url =
+        'https://maps.googleapis.com/maps/api/directions/json?origin=${_currentPosition.latitude},${_currentPosition.longitude}&destination=${_deliveryPoints.last.latitude},${_deliveryPoints.last.longitude}&waypoints=$waypoints&optimizeWaypoints=true&language=es&key=$_apiKey';
 
-  final String url =
-      'https://maps.googleapis.com/maps/api/directions/json?origin=${_currentPosition.latitude},${_currentPosition.longitude}&destination=${_deliveryPoints.last.latitude},${_deliveryPoints.last.longitude}&waypoints=$waypoints&optimizeWaypoints=true&language=es&key=$_apiKey';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      if (json['routes'].isNotEmpty) {
+        final points = json['routes'][0]['overview_polyline']['points'];
+        final List<LatLng> polylinePoints = _decodePoly(points);
 
-  final response = await http.get(Uri.parse(url));
-  if (response.statusCode == 200) {
-    final json = jsonDecode(response.body);
-    if (json['routes'].isNotEmpty) {
-      final points = json['routes'][0]['overview_polyline']['points'];
-      final List<LatLng> polylinePoints = _decodePoly(points);
+        setState(() {
+          _polylines.removeWhere((polyline) => polyline.polylineId == const PolylineId('route'));
+          _polylines.add(Polyline(
+            polylineId: const PolylineId('route'),
+            points: polylinePoints,
+            color: Colors.blue,
+            width: 5,
+          ));
 
-      setState(() {
-        _polylines.add(Polyline(
-          polylineId: const PolylineId('route'),
-          points: polylinePoints,
-          color: Colors.blue,
-          width: 5,
-        ));
-
-        // Extraer los pasos de la ruta en español
-        _routeSteps = (json['routes'][0]['legs'][0]['steps'] as List)
-            .map((step) => step['html_instructions']
-                .toString()
-                .replaceAll(RegExp(r'<[^>]*>'), ''))
-            .toList();
-      });
-
-      final GoogleMapController controller = await _controller.future;
-      controller.animateCamera(CameraUpdate.newLatLngBounds(
-        _boundsFromLatLngList([_currentPosition, ..._deliveryPoints]),
-        50,
-      ));
+          _routeSteps = (json['routes'][0]['legs'][0]['steps'] as List)
+              .map((step) => step['html_instructions']
+                  .toString()
+                  .replaceAll(RegExp(r'<[^>]*>'), ''))
+              .toList();
+        });
+      }
     }
   }
-}
 
   List<LatLng> _decodePoly(String poly) {
     List<LatLng> polyline = [];
@@ -219,18 +209,6 @@ Future<void> _drawRoute() async {
     return polyline;
   }
 
-  LatLngBounds _boundsFromLatLngList(List<LatLng> list) {
-    double x0 = list[0].latitude, x1 = list[0].latitude;
-    double y0 = list[0].longitude, y1 = list[0].longitude;
-    for (LatLng latLng in list) {
-      if (latLng.latitude > x1) x1 = latLng.latitude;
-      if (latLng.latitude < x0) x0 = latLng.latitude;
-      if (latLng.longitude > y1) y1 = latLng.longitude;
-      if (latLng.longitude < y0) y0 = latLng.longitude;
-    }
-    return LatLngBounds(northeast: LatLng(x1, y1), southwest: LatLng(x0, y0));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -247,7 +225,9 @@ Future<void> _drawRoute() async {
                     return ListView.builder(
                       itemCount: _routeSteps.length,
                       itemBuilder: (_, index) => ListTile(
-                        title: Text("Paso ${index + 1}: ${_routeSteps[index]}"),
+                        leading: const Icon(Icons.directions),
+                        title: Text("Paso ${index + 1}"),
+                        subtitle: Text(_routeSteps[index]),
                       ),
                     );
                   },
