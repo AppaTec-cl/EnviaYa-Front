@@ -20,6 +20,7 @@ class MapSampleState extends State<MapSample> {
 
   LatLng _currentPosition = _initialPosition;
   LocationData? _currentLocation;
+  StreamSubscription<LocationData>? _locationSubscription; // Listener de ubicación
   final String _apiKey = 'AIzaSyBUG45qeydoyjANTcG2Qnf0Ce6nOEXW6kw';
 
   Set<Marker> _markers = {};
@@ -52,12 +53,16 @@ class MapSampleState extends State<MapSample> {
     _currentLocation = await location.getLocation();
     _updateMarkerAndRoute(_currentLocation!);
 
-    location.onLocationChanged.listen((LocationData newLocation) {
-      _updateMarkerAndRoute(newLocation);
+    // Escuchar actualizaciones de ubicación
+    _locationSubscription = location.onLocationChanged.listen((LocationData newLocation) {
+      if (mounted) { // Verifica si el widget sigue montado
+        _updateMarkerAndRoute(newLocation);
+      }
     });
   }
 
   void _updateMarkerAndRoute(LocationData locationData) async {
+    if (!mounted) return; // Verifica nuevamente antes de llamar setState
     setState(() {
       _currentPosition = LatLng(locationData.latitude!, locationData.longitude!);
       _markers.removeWhere((marker) => marker.markerId == const MarkerId('currentLocation'));
@@ -68,11 +73,6 @@ class MapSampleState extends State<MapSample> {
         infoWindow: const InfoWindow(title: 'Mi ubicación actual'),
       ));
     });
-
-    await _drawRoute();
-
-    final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(CameraUpdate.newLatLng(_currentPosition));
   }
 
   Future<void> _fetchWorkerIdAndOrders() async {
@@ -90,7 +90,9 @@ class MapSampleState extends State<MapSample> {
 
       await _fetchAssignedOrders();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
   }
 
@@ -107,7 +109,7 @@ class MapSampleState extends State<MapSample> {
     for (var doc in snapshot.docs) {
       String address = "${doc['address']}, ${doc['city']}";
       LatLng? coordinates = await _getCoordinatesFromAddress(address);
-      if (coordinates != null) {
+      if (coordinates != null && mounted) {
         setState(() {
           _deliveryPoints.add(coordinates);
           _markers.add(Marker(
@@ -122,7 +124,7 @@ class MapSampleState extends State<MapSample> {
       }
     }
 
-    if (_deliveryPoints.isNotEmpty) {
+    if (_deliveryPoints.isNotEmpty && mounted) {
       _drawRoute();
     }
   }
@@ -152,7 +154,7 @@ class MapSampleState extends State<MapSample> {
         'https://maps.googleapis.com/maps/api/directions/json?origin=${_currentPosition.latitude},${_currentPosition.longitude}&destination=${_deliveryPoints.last.latitude},${_deliveryPoints.last.longitude}&waypoints=$waypoints&optimizeWaypoints=true&language=es&key=$_apiKey';
 
     final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 && mounted) {
       final json = jsonDecode(response.body);
       if (json['routes'].isNotEmpty) {
         final points = json['routes'][0]['overview_polyline']['points'];
@@ -166,12 +168,6 @@ class MapSampleState extends State<MapSample> {
             color: Colors.blue,
             width: 5,
           ));
-
-          _routeSteps = (json['routes'][0]['legs'][0]['steps'] as List)
-              .map((step) => step['html_instructions']
-                  .toString()
-                  .replaceAll(RegExp(r'<[^>]*>'), ''))
-              .toList();
         });
       }
     }
@@ -210,32 +206,16 @@ class MapSampleState extends State<MapSample> {
   }
 
   @override
+  void dispose() {
+    _locationSubscription?.cancel(); // Cancela el listener de ubicación
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rutas Asignadas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.navigation),
-            onPressed: () {
-              if (_routeSteps.isNotEmpty) {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (_) {
-                    return ListView.builder(
-                      itemCount: _routeSteps.length,
-                      itemBuilder: (_, index) => ListTile(
-                        leading: const Icon(Icons.directions),
-                        title: Text("Paso ${index + 1}"),
-                        subtitle: Text(_routeSteps[index]),
-                      ),
-                    );
-                  },
-                );
-              }
-            },
-          ),
-        ],
       ),
       body: GoogleMap(
         mapType: MapType.normal,
