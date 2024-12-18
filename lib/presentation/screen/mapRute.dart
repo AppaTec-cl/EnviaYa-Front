@@ -87,11 +87,13 @@ class MapSampleState extends State<MapSample> {
   Future<void> _fetchAssignedOrders() async {
     if (_workerId == null) return;
 
-    final QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('orders')
-        .where('workerId', isEqualTo: _workerId)
-        .where('assigned', isEqualTo: true)
-        .get();
+final QuerySnapshot snapshot = await FirebaseFirestore.instance
+    .collection('orders')
+    .where('workerId', isEqualTo: _workerId)
+    .where('assigned', isEqualTo: true)
+    .where('status', isEqualTo: 'Pendiente') // Solo pedidos pendientes
+    .get();
+
 
     for (var doc in snapshot.docs) {
       String address = "${doc['address']}, ${doc['city']}";
@@ -102,7 +104,10 @@ class MapSampleState extends State<MapSample> {
           _markers.add(Marker(
             markerId: MarkerId(doc.id),
             position: coordinates,
-            infoWindow: InfoWindow(title: "Pedido: ${doc.id}"),
+            infoWindow: InfoWindow(
+              title: "Tracking: ${doc['tracking_number']}",
+              snippet: "Dirección: ${doc['address']}",
+            ),
           ));
         });
       }
@@ -131,9 +136,9 @@ Future<void> _drawRoute() async {
   if (_deliveryPoints.length < 2) return;
 
   String waypoints = _deliveryPoints
-      .sublist(1, _deliveryPoints.length - 1)
       .map((point) => "${point.latitude},${point.longitude}")
       .join('|');
+
 
   final String url =
       'https://maps.googleapis.com/maps/api/directions/json?origin=${_currentPosition.latitude},${_currentPosition.longitude}&destination=${_deliveryPoints.last.latitude},${_deliveryPoints.last.longitude}&waypoints=$waypoints&optimizeWaypoints=true&language=es&key=$_apiKey';
