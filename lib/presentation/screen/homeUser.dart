@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:enviaya/presentation/screen/trackingScreen.dart';
 import 'package:enviaya/presentation/screen/historyScreen.dart';
 import 'package:enviaya/presentation/screen/helpSupportScreen.dart';
+import 'package:enviaya/presentation/screen/editProfileScreen.dart';
 
 class HomeUserScreen extends StatelessWidget {
   const HomeUserScreen({super.key});
@@ -73,6 +74,16 @@ class HomeUserScreen extends StatelessWidget {
                         );
                       },
                     ),
+                    _buildOptionCard(
+                          icon: Icons.edit,
+                          label: "Editar Perfil",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                            );
+                          },
+                        ),
                     _buildOptionCard(
                       icon: Icons.logout,
                       label: "Cerrar Sesión",
