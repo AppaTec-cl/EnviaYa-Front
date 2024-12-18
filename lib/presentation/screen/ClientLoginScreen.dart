@@ -31,7 +31,7 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
 
       // Si el inicio de sesión es exitoso
       Navigator.push(context,
-          MaterialPageRoute(builder: (context) => OrderSearchScreen()));
+          MaterialPageRoute(builder: (context) => HomeUserScreen()));
     } catch (e) {
       // Mostrar mensaje de error
       _showMessage(
