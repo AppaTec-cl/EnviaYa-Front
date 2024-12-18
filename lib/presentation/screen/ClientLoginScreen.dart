@@ -14,44 +14,42 @@ class ClienteLoginScreen extends StatefulWidget {
 class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
   bool _isPasswordVisible = false;
 
-  // Controladores para capturar el correo y la contraseña
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Instancia de FirebaseAuth y Firestore
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Método para iniciar sesión con Firebase
+  // Método para iniciar sesión con validación en 'clients'
   Future<void> _signInWithEmailAndPassword() async {
     try {
-      // Autenticar al usuario
+      // Intentar inicio de sesión en Firebase Auth
       final UserCredential userCredential =
           await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Verificar si la cuenta pertenece a la colección "clients"
-      final userDoc = await _firestore
+      // Verificar si el usuario existe en la colección 'clients'
+      final clientSnapshot = await _firestore
           .collection('clients')
-          .doc(userCredential.user!.uid)
+          .where('email', isEqualTo: _emailController.text.trim())
           .get();
 
-      if (userDoc.exists) {
-        // Redirigir a la pantalla de cliente
+      if (clientSnapshot.docs.isNotEmpty) {
+        // Si el usuario existe en 'clients', permitir acceso
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeUserScreen()),
         );
       } else {
-        // Cerrar sesión si el usuario no está en "clients"
+        // Si el usuario no está en 'clients', cerrar sesión y mostrar mensaje
         await _auth.signOut();
-        _showMessage("Esta cuenta no está registrada como cliente.");
+        _showMessage(
+            "No tienes permisos para acceder. Esta cuenta no pertenece a un cliente.");
       }
     } catch (e) {
-      // Mostrar mensaje de error
-      _showMessage("Error: El correo electrónico o la contraseña es incorrecto.");
+      _showMessage("Error: El correo electrónico o la contraseña es incorrecto");
     }
   }
 
@@ -130,7 +128,6 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // Recuperar contraseña
                       _auth.sendPasswordResetEmail(
                           email: _emailController.text.trim());
                       _showMessage("Correo de recuperación enviado.");
