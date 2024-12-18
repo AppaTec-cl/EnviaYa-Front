@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:enviaya/presentation/screen/registerClientScreen.dart';
 import 'package:enviaya/presentation/screen/homeUser.dart';
 
@@ -17,25 +18,40 @@ class _ClienteLoginScreenState extends State<ClienteLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Instancia de FirebaseAuth
+  // Instancia de FirebaseAuth y Firestore
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Método para iniciar sesión con Firebase
   Future<void> _signInWithEmailAndPassword() async {
     try {
+      // Autenticar al usuario
       final UserCredential userCredential =
           await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Si el inicio de sesión es exitoso
-      Navigator.push(context,
-          MaterialPageRoute(builder: (context) => HomeUserScreen()));
+      // Verificar si la cuenta pertenece a la colección "clients"
+      final userDoc = await _firestore
+          .collection('clients')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (userDoc.exists) {
+        // Redirigir a la pantalla de cliente
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeUserScreen()),
+        );
+      } else {
+        // Cerrar sesión si el usuario no está en "clients"
+        await _auth.signOut();
+        _showMessage("Esta cuenta no está registrada como cliente.");
+      }
     } catch (e) {
       // Mostrar mensaje de error
-      _showMessage(
-          "Error: El correo electronico o la contraseña es incorrecto");
+      _showMessage("Error: El correo electrónico o la contraseña es incorrecto.");
     }
   }
 
