@@ -44,6 +44,7 @@ dependencies:
   mailer:
   signature:
   url_launcher:
+  http: ^1.2.2
 
 
 
@@ -70,6 +71,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/img/homeImage.jpg
+    - assets/img/current_location.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

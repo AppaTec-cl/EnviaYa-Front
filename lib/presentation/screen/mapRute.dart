@@ -35,35 +35,47 @@ class MapSampleState extends State<MapSample> {
     _fetchWorkerIdAndOrders();
   }
 
-  Future<void> _getCurrentLocation() async {
-    Location location = Location();
-    bool _serviceEnabled = await location.serviceEnabled();
-    if (!_serviceEnabled) {
-      _serviceEnabled = await location.requestService();
-      if (!_serviceEnabled) return;
-    }
-
-    PermissionStatus _permissionGranted = await location.hasPermission();
-    if (_permissionGranted == PermissionStatus.denied) {
-      _permissionGranted = await location.requestPermission();
-      if (_permissionGranted != PermissionStatus.granted) return;
-    }
-
-    _currentLocation = await location.getLocation();
-    setState(() {
-      _currentPosition = LatLng(_currentLocation!.latitude!, _currentLocation!.longitude!);
-      _markers.add(Marker(
-        markerId: const MarkerId('currentLocation'),
-        position: _currentPosition,
-        infoWindow: const InfoWindow(title: 'Mi ubicación'),
-      ));
-    });
-
-    final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(CameraUpdate.newCameraPosition(
-      CameraPosition(target: _currentPosition, zoom: 14.0),
-    ));
+Future<void> _getCurrentLocation() async {
+  Location location = Location();
+  bool _serviceEnabled = await location.serviceEnabled();
+  if (!_serviceEnabled) {
+    _serviceEnabled = await location.requestService();
+    if (!_serviceEnabled) return;
   }
+
+  PermissionStatus _permissionGranted = await location.hasPermission();
+  if (_permissionGranted == PermissionStatus.denied) {
+    _permissionGranted = await location.requestPermission();
+    if (_permissionGranted != PermissionStatus.granted) return;
+  }
+
+  // Obtén la ubicación actual
+  _currentLocation = await location.getLocation();
+  _updateMarker(_currentLocation!);
+
+  // Escucha la ubicación en tiempo real
+  location.onLocationChanged.listen((LocationData newLocation) {
+    _updateMarker(newLocation);
+  });
+}
+
+void _updateMarker(LocationData locationData) async {
+  setState(() {
+    _currentPosition = LatLng(locationData.latitude!, locationData.longitude!);
+    _markers.removeWhere((marker) => marker.markerId == const MarkerId('currentLocation'));
+    _markers.add(Marker(
+      markerId: const MarkerId('currentLocation'),
+      position: _currentPosition,
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Color personalizado
+      infoWindow: const InfoWindow(title: 'Mi ubicación actual'),
+    ));
+  });
+
+  final GoogleMapController controller = await _controller.future;
+  controller.animateCamera(CameraUpdate.newLatLng(_currentPosition));
+}
+
+
 
   Future<void> _fetchWorkerIdAndOrders() async {
     try {
