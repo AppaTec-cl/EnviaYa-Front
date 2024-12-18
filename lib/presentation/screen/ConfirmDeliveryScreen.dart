@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:signature/signature.dart';
+import 'dart_rut_validator.dart'; // Importa el validador de RUT
 
 class ConfirmDeliveryScreen extends StatefulWidget {
   const ConfirmDeliveryScreen({super.key});
@@ -11,6 +12,7 @@ class ConfirmDeliveryScreen extends StatefulWidget {
 
 class _ConfirmDeliveryScreenState extends State<ConfirmDeliveryScreen> {
   final TextEditingController _trackingNumberController = TextEditingController();
+  final TextEditingController _rutController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final SignatureController _signatureController = SignatureController(
@@ -18,18 +20,35 @@ class _ConfirmDeliveryScreenState extends State<ConfirmDeliveryScreen> {
     penColor: Colors.black,
   );
 
+  // Instancia del validador de RUT
+  final RUTValidator _rutValidator = RUTValidator();
+
   Future<void> _confirmDelivery() async {
-    if (_trackingNumberController.text.trim().isEmpty) {
+    final String trackingNumber = _trackingNumberController.text.trim();
+    final String rut = _rutController.text.trim();
+
+    // Validar campos
+    if (trackingNumber.isEmpty || rut.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Por favor, ingresa el número de seguimiento.")),
+        const SnackBar(content: Text("Por favor, completa todos los campos obligatorios.")),
+      );
+      return;
+    }
+
+    // Validar RUT
+    final String? rutError = _rutValidator.validator(rut);
+    if (rutError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(rutError)),
       );
       return;
     }
 
     try {
+      // Verificar número de seguimiento
       final querySnapshot = await _firestore
           .collection('orders')
-          .where('tracking_number', isEqualTo: _trackingNumberController.text.trim())
+          .where('tracking_number', isEqualTo: trackingNumber)
           .limit(1)
           .get();
 
@@ -55,6 +74,7 @@ class _ConfirmDeliveryScreenState extends State<ConfirmDeliveryScreen> {
       await _firestore.collection('orders').doc(orderId).update({
         'status': 'Entregado',
         'signature': signatureBytes, // Guardar la firma como bytes
+        'client_rut': rut, // Guardar el RUT del cliente
         'timestamp': FieldValue.serverTimestamp(),
       });
 
@@ -64,6 +84,7 @@ class _ConfirmDeliveryScreenState extends State<ConfirmDeliveryScreen> {
 
       // Limpiar los campos después de confirmar
       _trackingNumberController.clear();
+      _rutController.clear();
       _signatureController.clear();
     } catch (e) {
       print('Error al confirmar entrega: $e');
@@ -96,6 +117,21 @@ class _ConfirmDeliveryScreenState extends State<ConfirmDeliveryScreen> {
                 controller: _trackingNumberController,
                 decoration: InputDecoration(
                   labelText: "Número de seguimiento",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Campo para RUT del cliente
+              TextField(
+                controller: _rutController,
+                onChanged: (value) {
+                  RUTValidator.formatFromTextController(_rutController);
+                },
+                decoration: InputDecoration(
+                  labelText: "RUT del Cliente (con puntos y guión)",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),

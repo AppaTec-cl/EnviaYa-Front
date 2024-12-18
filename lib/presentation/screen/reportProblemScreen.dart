@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:enviaya/services/email_service2.dart';
+import 'dart_rut_validator.dart'; // Importa el validador de RUT
 
 class ReportProblemScreen extends StatefulWidget {
   const ReportProblemScreen({super.key});
@@ -19,6 +20,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       TextEditingController();
   final TextEditingController _rutController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
+  final TextEditingController _additionalCommentsController =
+      TextEditingController(); // Campo adicional para comentarios
 
   String? _selectedProblem;
   LocationData? _currentLocation;
@@ -39,6 +42,9 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   late GoogleMapController _mapController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final EmailService _emailService = EmailService();
+
+  // Instancia del validador de RUT
+  final RUTValidator _rutValidator = RUTValidator();
 
   // Obtener la ubicación actual
   Future<void> _getCurrentLocation() async {
@@ -70,7 +76,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     try {
       final querySnapshot = await _firestore
           .collection('orders')
-          .where('tracking_number', isEqualTo: _trackingNumberController.text.trim())
+          .where('tracking_number',
+              isEqualTo: _trackingNumberController.text.trim())
           .limit(1)
           .get();
 
@@ -105,11 +112,23 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
 
   // Enviar el reporte a Firestore
   Future<void> _submitReport() async {
-    if (_trackingNumberController.text.trim().isEmpty ||
-        _rutController.text.trim().isEmpty ||
-        _selectedProblem == null) {
+    final rut = _rutController.text.trim();
+    final trackingNumber = _trackingNumberController.text.trim();
+
+    // Validar campos obligatorios
+    if (trackingNumber.isEmpty || rut.isEmpty || _selectedProblem == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Por favor, completa todos los campos obligatorios.")),
+        const SnackBar(
+            content: Text("Por favor, completa todos los campos obligatorios.")),
+      );
+      return;
+    }
+
+    // Validar el RUT
+    final String? rutError = _rutValidator.validator(rut);
+    if (rutError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(rutError)),
       );
       return;
     }
@@ -128,10 +147,12 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       final String? imageBase64 = _encodeImageToBase64(_selectedImage);
 
       await _firestore.collection('problem_reports').add({
-        'tracking_number': _trackingNumberController.text.trim(),
-        'rut': _rutController.text.trim(),
+        'tracking_number': trackingNumber,
+        'rut': rut,
         'problem': _selectedProblem,
         'comments': _commentsController.text.trim(),
+        'additional_comments': _additionalCommentsController.text
+            .trim(), // Guardar comentarios adicionales
         'image_base64': imageBase64,
         'location': _currentLatLng != null
             ? {
@@ -146,7 +167,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       await _emailService.sendProblemReportEmail(
         recipientEmail: orderData['email'],
         recipientName: '${orderData['name']} ${orderData['surname']}',
-        trackingNumber: _trackingNumberController.text.trim(),
+        trackingNumber: trackingNumber,
         problemDescription: _selectedProblem!,
       );
 
@@ -158,6 +179,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
       _trackingNumberController.clear();
       _rutController.clear();
       _commentsController.clear();
+      _additionalCommentsController.clear(); // Limpiar campo adicional
       setState(() {
         _selectedProblem = null;
         _selectedImage = null;
@@ -187,7 +209,6 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mostrar mapa si la ubicación está disponible
               if (_currentLatLng != null)
                 SizedBox(
                   height: 300,
@@ -212,8 +233,6 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 const Center(child: CircularProgressIndicator()),
 
               const SizedBox(height: 20),
-
-              // Número de seguimiento
               TextField(
                 controller: _trackingNumberController,
                 decoration: InputDecoration(
@@ -224,10 +243,11 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // RUT
               TextField(
                 controller: _rutController,
+                onChanged: (value) {
+                  RUTValidator.formatFromTextController(_rutController);
+                },
                 decoration: InputDecoration(
                   labelText: "RUT del destinatario",
                   border: OutlineInputBorder(
@@ -236,8 +256,6 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Selección del problema
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
                   labelText: "Selecciona el problema",
@@ -259,11 +277,9 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 },
               ),
               const SizedBox(height: 20),
-
-              // Comentarios adicionales
               TextField(
-                controller: _commentsController,
-                maxLines: 4,
+                controller: _additionalCommentsController,
+                maxLines: 3,
                 decoration: InputDecoration(
                   labelText: "Comentarios adicionales (opcional)",
                   border: OutlineInputBorder(
@@ -272,50 +288,9 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Selección de foto
-              Wrap(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _pickImage(ImageSource.camera),
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text("Tomar Foto"),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    onPressed: () => _pickImage(ImageSource.gallery),
-                    icon: const Icon(Icons.photo),
-                    label: const Text("Seleccionar de Galería"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (_selectedImage != null)
-                Image.file(
-                  _selectedImage!,
-                  height: 150,
-                  fit: BoxFit.cover,
-                ),
-
-              const SizedBox(height: 20),
-
-              // Botón para enviar el reporte
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitReport,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    backgroundColor: Colors.black,
-                  ),
-                  child: const Text(
-                    "Enviar Reporte",
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
+              ElevatedButton(
+                onPressed: _submitReport,
+                child: const Text("Enviar Reporte"),
               ),
             ],
           ),
