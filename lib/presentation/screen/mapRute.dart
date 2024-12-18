@@ -215,7 +215,7 @@ class MapSampleState extends State<MapSample> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rutas Asignadas'),
+        title: const Text('Ruta de pedidos asignados'),
       ),
       body: GoogleMap(
         mapType: MapType.normal,

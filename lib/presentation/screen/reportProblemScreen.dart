@@ -63,12 +63,14 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     }
 
     _currentLocation = await location.getLocation();
-    setState(() {
-      _currentLatLng = LatLng(
-        _currentLocation!.latitude!,
-        _currentLocation!.longitude!,
-      );
-    });
+    if(mounted){
+      setState(() {
+        _currentLatLng = LatLng(
+          _currentLocation!.latitude!,
+          _currentLocation!.longitude!,
+        );
+      });
+    }
   }
 
   // Validar si el número de seguimiento existe
